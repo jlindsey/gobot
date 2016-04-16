@@ -1,0 +1,9 @@
+[submodule "vendor/github.com/gorilla/websocket"]
+	path = vendor/github.com/gorilla/websocket
+	url = https://github.com/gorilla/websocket
+[submodule "vendor/github.com/Jeffail/gabs"]
+	path = vendor/github.com/Jeffail/gabs
+	url = https://github.com/Jeffail/gabs
+[submodule "vendor/github.com/op/go-logging"]
+	path = vendor/github.com/op/go-logging
+	url = https://github.com/op/go-logging
