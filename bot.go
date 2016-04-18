@@ -1,11 +1,9 @@
-/*
-Gobot: the funtime Go chat bot.
+/*Package gobot : the funtime Go chat bot.
 
 The Gobot package comprises a library for implementing a Slack bot in Go.
 Implementing packages should acquire a pointer to a bot by calling NewBot,
 add commands and listeners with RegisterCommand, and finally call Start when
-setup is complete to connect to Slack and start processing messages.
-*/
+setup is complete to connect to Slack and start processing messages.*/
 package gobot
 
 import (
@@ -39,7 +37,7 @@ connections, and state of the bot.
 */
 type Bot struct {
 	apiToken  string
-	socketUrl *url.URL
+	socketURL *url.URL
 	conn      *websocket.Conn
 	selfName  string
 	selfID    string
@@ -60,7 +58,7 @@ func (b Bot) String() string {
 
 // NewBot instantiates and returns a new Bot struct.
 func NewBot() *Bot {
-	token := getApiTokenOrDie()
+	token := getAPITokenOrDie()
 
 	bot := Bot{
 		apiToken:     token,
@@ -126,7 +124,7 @@ func (b *Bot) runMainLoop() {
 	}
 }
 
-func getApiTokenOrDie() string {
+func getAPITokenOrDie() string {
 	token := os.Getenv(apiTokenEnvKey)
 	if len(token) == 0 {
 		Log.Fatalf("Can't find slack token in env var %s", apiTokenEnvKey)
@@ -162,11 +160,11 @@ func (b *Bot) callSlackStartRTM() {
 		Log.Fatalf("Bad response from RTM start call: %s", parsedBody)
 	}
 
-	socketUrl, err := url.Parse(parsedBody.Path("url").Data().(string))
+	socketURL, err := url.Parse(parsedBody.Path("url").Data().(string))
 	if err != nil {
 		Log.Fatalf("Unable to parse websocket endpoint URI: %s", err)
 	}
-	b.socketUrl = socketUrl
+	b.socketURL = socketURL
 	b.teamName = parsedBody.Path("team.name").Data().(string)
 	b.selfName = parsedBody.Path("self.name").Data().(string)
 	b.selfID = parsedBody.Path("self.id").Data().(string)
@@ -179,8 +177,8 @@ func (b *Bot) callSlackStartRTM() {
 }
 
 func (b *Bot) startSlackWebsocket() {
-	Log.Infof("Dailing Slack at %s", b.socketUrl.String())
-	conn, _, err := websocket.DefaultDialer.Dial(b.socketUrl.String(), nil)
+	Log.Infof("Dailing Slack at %s", b.socketURL.String())
+	conn, _, err := websocket.DefaultDialer.Dial(b.socketURL.String(), nil)
 	if err != nil {
 		Log.Fatalf("Unable to open websocket to Slack: %s", err)
 	}
@@ -218,7 +216,7 @@ func (b *Bot) handleIncomingMessage(msg *gabs.Container) {
 
 	Log.Debugf("New message: %s", msg)
 
-	var msgText string = msg.Path("text").Data().(string)
+	msgText := msg.Path("text").Data().(string)
 	if !msgPrefix.MatchString(msgText) {
 		return
 	}

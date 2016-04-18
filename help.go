@@ -2,7 +2,6 @@ package gobot
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -52,11 +51,11 @@ func parseHelpText(str string) (*help, error) {
 	h.long = strings.TrimSpace(md["long"])
 
 	if h.name == "" {
-		return nil, errors.New(fmt.Sprintf("Unable to parse name from help text: %s", str))
+		return nil, fmt.Errorf("Unable to parse name from help text: %s", str)
 	}
 
 	if h.short == "" {
-		return nil, errors.New(fmt.Sprintf("Unable to parse short description from help text: %s", str))
+		return nil, fmt.Errorf("Unable to parse short description from help text: %s", str)
 	}
 
 	return h, nil

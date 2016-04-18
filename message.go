@@ -6,7 +6,9 @@ import (
 	"sync/atomic"
 )
 
-var msgID uint32 = 0
+var (
+	msgID uint32
+)
 
 /*
 SlackMessage encapsulates a single (outgoing) Slack message payload.
@@ -26,7 +28,7 @@ type SlackMessage struct {
 }
 
 /*
-MarshalJSON() satisfies the json.Marshaler interface.
+MarshalJSON satisfies the json.Marshaler interface.
 This is needed to include the unexported ID field as well as include
 the "type" (which for us is always "message").
 */
@@ -45,7 +47,7 @@ func (s SlackMessage) String() string {
 	return fmt.Sprintf("slackMessage{ID: %d Channel: %s, Text: %s}", s.id, s.Channel, s.Text)
 }
 
-// Returns a new SlackMessage with the next atomically-incremented message ID.
+// NewSlackMessage returns a new SlackMessage with the next atomically-incremented message ID.
 func NewSlackMessage(channel string, text string) *SlackMessage {
 	Log.Debugf("New slack message: %s, %s", channel, text)
 	nextID := atomic.AddUint32(&msgID, 1)
