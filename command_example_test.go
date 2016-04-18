@@ -26,7 +26,7 @@ func (a AddCommand) Help() string {
 	ex: @gobot: add 1 2`
 }
 
-func (a AddCommand) Run(channel string, text string, out chan gobot.SlackMessage) error {
+func (a AddCommand) Run(channel string, text string, out chan *gobot.SlackMessage) error {
 	names := a.matcher.SubexpNames()
 	matches := a.matcher.FindAllStringSubmatch(text, -1)[0]
 

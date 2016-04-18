@@ -19,7 +19,7 @@ func (p PingCommand) Help() string {
 	return "*ping*: A simple response command to test connectivity"
 }
 
-func (p PingCommand) Run(channel string, text string, out chan gobot.SlackMessage) error {
+func (p PingCommand) Run(channel string, text string, out chan *gobot.SlackMessage) error {
 	out <- gobot.NewSlackMessage(channel, "Pong!")
 	return nil
 }
