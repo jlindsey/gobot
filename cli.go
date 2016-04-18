@@ -13,10 +13,14 @@ func init() {
 	signal.Notify(interrupt, os.Interrupt)
 }
 
+/*
+StartCLI launches the bot in a shell environment.
+
+Packages implementing Gobot as a compiled binary launched via a CLI should
+call this method to properly handle interrupts and stdin/out redirection.
+*/
 func StartCLI() {
 	go handleInterrupt()
-	bot := NewBot()
-	bot.Start()
 }
 
 func handleInterrupt() {

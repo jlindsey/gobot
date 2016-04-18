@@ -1,8 +1,14 @@
-/* Gobot: the funtime Go chat bot. */
+/*
+Gobot: the funtime Go chat bot.
+
+The Gobot package comprises a library for implementing a Slack bot in Go.
+Implementing packages should acquire a pointer to a bot by calling NewBot,
+add commands and listeners with RegisterCommand, and finally call Start when
+setup is complete to connect to Slack and start processing messages.
+*/
 package gobot
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
@@ -12,7 +18,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -41,8 +46,9 @@ type Bot struct {
 	teamName  string
 
 	commands []Command
+	helps    map[string]*help
 
-	sendQueue    chan slackMessage
+	sendQueue    chan *SlackMessage
 	messageQueue chan *gabs.Container
 	commandQueue chan func()
 }
@@ -52,12 +58,15 @@ func (b Bot) String() string {
 	return fmt.Sprintf("Bot{team: %s, name: %s, id: %s}", b.teamName, b.selfName, b.selfID)
 }
 
+// NewBot instantiates and returns a new Bot struct.
 func NewBot() *Bot {
 	token := getApiTokenOrDie()
 
 	bot := Bot{
 		apiToken:     token,
-		sendQueue:    make(chan slackMessage, messageQueueBufferSize),
+		commands:     make([]Command, 0, 10),
+		helps:        make(map[string]*help),
+		sendQueue:    make(chan *SlackMessage, messageQueueBufferSize),
 		messageQueue: make(chan *gabs.Container, messageQueueBufferSize),
 		commandQueue: make(chan func(), 5),
 	}
@@ -65,16 +74,34 @@ func NewBot() *Bot {
 	return &bot
 }
 
+/*
+Start initiates the Slack RTM sign-on process and connects to the
+websocket. It starts the various goroutines and listeners that
+comprise the bot's functionality.
+
+This method starts the main run loop for the bot and so blocks
+until exit conditions are met (interrupt signal caught, error arrises, etc).
+Therefore, this method should not be called by implementing packages until
+the bot setup is complete and all commands are registered.
+*/
 func (b *Bot) Start() {
 	Log.Info("Hello! Starting up...")
 
+	b.extractHelps()
 	b.callSlackStartRTM()
 	b.startSlackWebsocket()
-	defer b.Close()
 	b.runMainLoop()
 }
 
-func (b *Bot) Close() {
+/*
+RegisterCommand adds a new command to the internal commands
+registry of the bot. This will allow those commands to be
+triggered by messages. See the documentation of the Command
+interface for mroe details.
+*/
+func (b *Bot) RegisterCommand(c Command) {
+	Log.Debugf("Registering command: %s", c)
+	b.commands = append(b.commands, c)
 }
 
 func (b *Bot) runMainLoop() {
@@ -84,8 +111,8 @@ func (b *Bot) runMainLoop() {
 		select {
 		case msg := <-b.messageQueue:
 			go b.handleIncomingMessage(msg)
-		case cmdWrapper := <-b.commandQueue:
-			go cmdWrapper()
+		case invocation := <-b.commandQueue:
+			go invocation()
 		case msg := <-b.sendQueue:
 			go b.handleOutgoingMessage(msg)
 		case <-done:
@@ -197,40 +224,33 @@ func (b *Bot) handleIncomingMessage(msg *gabs.Container) {
 	}
 	msgText = msgPrefix.ReplaceAllString(msgText, "")
 
-	if msgText == "help" {
+	if helpTrigger.MatchString(msgText) {
 		Log.Debugf("HELP Triggered by %s", msgText)
-		go b.printCommandsHelp(msg.Path("channel").Data().(string))
+		go b.printCommandsHelp(msg.Path("channel").Data().(string), msgText)
 		return
 	}
 
 	for _, cmd := range b.commands {
 		if cmd.Matches(msgText) {
-			Log.Debugf("Triggered by %s", msgText)
+			Log.Debugf("%s Triggered by %s", cmd, msgText)
 			b.commandQueue <- func() { b.handleCommand(msg, cmd) }
+			return
 		}
 	}
 }
 
-func (b *Bot) printCommandsHelp(toChannel string) {
-	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintln("_List Of Commands_"))
-	buffer.WriteString(fmt.Sprintln("*help*:  Displays this help message."))
+func (b *Bot) handleCommand(msg *gabs.Container, cmd Command) {
+	channel := msg.Path("channel").Data().(string)
+	text := msg.Path("text").Data().(string)
 
-	for _, cmd := range b.commands {
-		buffer.WriteString(fmt.Sprintln(cmd.Help()))
-	}
-
-	b.sendQueue <- NewSlackMessage(toChannel, strings.TrimSpace(buffer.String()))
-}
-
-func (b *Bot) handleCommand(triggeringMessage *gabs.Container, cmd Command) {
-	err := cmd.Run(triggeringMessage, b.sendQueue)
+	Log.Debugf("Running %s", cmd)
+	err := cmd.Run(channel, text, b.sendQueue)
 	if err != nil {
 		Log.Errorf("Error running command: %s", err)
 	}
 }
 
-func (b *Bot) handleOutgoingMessage(msg slackMessage) {
+func (b *Bot) handleOutgoingMessage(msg *SlackMessage) {
 	str, err := json.Marshal(msg)
 	if err != nil {
 		Log.Errorf("Unable to marshal message: %s", msg)

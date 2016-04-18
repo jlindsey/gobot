@@ -1,25 +1,53 @@
 package gobot
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 )
 
-var msgID int32 = 0
+var msgID uint32 = 0
 
-type slackMessage struct {
-	ID      int32  `json:"id"`
-	Type    string `json:"type"`
-	Channel string `json:"channel"`
-	Text    string `json:"text"`
+/*
+SlackMessage encapsulates a single (outgoing) Slack message payload.
+Incoming messages are handled by the gabs library for flexibility.
+
+Slack messages must contain a sequentially-incrementing ID field
+to ensure Slack displays the messages in proper order even if they
+are sent or received out of order. Gobot maintains a uint32 counter
+and atomically generates the next ID within the NewSlackMessage method,
+so this type should never be used on its own and should always be
+acquired via that method.
+*/
+type SlackMessage struct {
+	id      uint32
+	Channel string
+	Text    string
 }
 
-func (s slackMessage) String() string {
-	return fmt.Sprintf("slackMessage{ID: %d, Type: %s, Channel: %s, Text: %s}",
-		s.ID, s.Type, s.Channel, s.Text)
+/*
+MarshalJSON() satisfies the json.Marshaler interface.
+This is needed to include the unexported ID field as well as include
+the "type" (which for us is always "message").
+*/
+func (s SlackMessage) MarshalJSON() ([]byte, error) {
+	Log.Debugf("Marshaling Slack Message: %s", s)
+	return json.Marshal(map[string]interface{}{
+		"id":      s.id,
+		"type":    "message",
+		"channel": s.Channel,
+		"text":    s.Text,
+	})
 }
 
-func NewSlackMessage(channel string, text string) slackMessage {
-	nextID := atomic.AddInt32(&msgID, 1)
-	return slackMessage{nextID, "message", channel, text}
+// String implements the Stringer interface.
+func (s SlackMessage) String() string {
+	return fmt.Sprintf("slackMessage{ID: %d Channel: %s, Text: %s}", s.id, s.Channel, s.Text)
+}
+
+// Returns a new SlackMessage with the next atomically-incremented message ID.
+func NewSlackMessage(channel string, text string) *SlackMessage {
+	Log.Debugf("New slack message: %s, %s", channel, text)
+	nextID := atomic.AddUint32(&msgID, 1)
+	return &SlackMessage{nextID, channel, text}
 }
