@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -217,7 +218,8 @@ func (b *Bot) handleIncomingMessage(msg *gabs.Container) {
 	Log.Debugf("New message: %s", msg)
 
 	msgText := msg.Path("text").Data().(string)
-	if !msgPrefix.MatchString(msgText) {
+	msgChannel := msg.Path("channel").Data().(string)
+	if !msgPrefix.MatchString(msgText) || strings.HasPrefix(msgChannel, "D") {
 		return
 	}
 	msgText = msgPrefix.ReplaceAllString(msgText, "")
