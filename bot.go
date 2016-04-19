@@ -239,7 +239,7 @@ func (b *Bot) handleIncomingMessage(msg *gabs.Container) {
 
 func (b *Bot) handleCommand(msg *gabs.Container, cmd Command) {
 	channel := msg.Path("channel").Data().(string)
-	text := msg.Path("text").Data().(string)
+	text := msgPrefix.ReplaceAllString(msg.Path("text").Data().(string), "")
 
 	Log.Debugf("Running %s", cmd)
 	err := cmd.Run(channel, text, b.sendQueue)
